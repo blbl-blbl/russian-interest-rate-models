@@ -57,8 +57,10 @@ def get_ruonia(
         )
         df.to_excel(out_path / f"RUONIA_DATA_{start_date}_{end_date}.xlsx", index=False)
 
+        return 1
+
     except ValueError as er:
-        raise f"Возникла обшика при сохранении в Датафрейм RUONIA"
+        raise f"Возникла обшика при сохранении в Датафрейм RUONIA, {er}"
 
 
 def get_zcyc_params(
@@ -135,10 +137,53 @@ def get_zcyc_params(
         )
         df.to_excel(out_path / f"ZCYC_{start_date}_{end_date}.xlsx", index=False)
 
-    except ValueError as er:
-        raise f"Возникла обшика при сохранении в Датафрейм КБД"
+        return 1
 
+    except ValueError as er:
+        raise f"Возникла обшика при сохранении в Датафрейм КБД, {er}"
+
+
+def get_key_rate(
+        start_date:str = "01.01.2014",
+        end_date:str = str(datetime.date.today().strftime("%d.%m.%Y"))
+):
+    url = f"https://www.cbr.ru/hd_base/keyrate/?UniDbQuery.Posted=True&UniDbQuery.From={start_date}&UniDbQuery.To={end_date}"
+    response = requests.get(url)
+
+    if response.status_code != 200:
+        print("Не удалось установить соединение с сайтом ЦБ (KEY RATE)")
+        return 0
+
+    try:
+        soup = BeautifulSoup(response.text, "html.parser")
+        table = soup.find("div", class_="table-wrapper")
+        rows = table.find_all("tr")
+
+        dates = []
+        key_rates = []
+
+        for row_number in range(1, len(rows)):
+            columns = [column.text.strip() for column in rows[row_number].find_all("td")]
+            dates.append(columns[0])
+            key_rates.append(columns[1])
+
+    except ValueError as er:
+        raise f"Возникла ошибка при парсинге KEY RATE, {er}"
+
+
+    try:
+        df = pd.DataFrame(
+            {
+                "Дата": dates,
+                "KEY RATE": key_rates,
+            }
+        )
+        df.to_excel(out_path / f"KEY_RATE_{start_date}_{end_date}.xlsx", index=False)
+
+    except ValueError as er:
+        raise f"Возникла обшика при сохранении в Датафрейм KEY_RATE, {er}"
 
 if __name__ == "__main__":
-    # get_ruonia()
+    get_ruonia()
     get_zcyc_params()
+    get_key_rate()
