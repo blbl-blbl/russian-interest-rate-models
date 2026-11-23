@@ -59,14 +59,14 @@ curve = zcyc.pivot(index="date", columns="tenor_years", values="yield_pct")
 проверяются качество истории, RUONIA и ключевая ставка, их разница,
 динамика КБД ОФЗ, кризисные периоды и неустойчивость среднего.
 
-1. Установить зависимости: \`python -m pip install -e ".[dev]"\`.
-2. Загрузить три ряда: \`python -m russian_rates --series all --start 2014-01-01\`.
-3. Открыть ноутбук из корня проекта или из папки \`notebooks/\` в Jupyter/IDE и выполнить все ячейки.
+1. Установить зависимости: `python -m pip install -e ".[dev]"`.
+2. Загрузить три ряда: `python -m russian_rates --series all --start 2014-01-01`.
+3. Открыть ноутбук из корня проекта или из папки `notebooks/` в Jupyter/IDE и выполнить все ячейки.
 
 Выполненные изображения **не хранятся** в Git: чтобы получить графики,
-нужны локальные Parquet-файлы в \`data/processed/\` (они исключены из Git).
+нужны локальные Parquet-файлы в `data/processed/` (они исключены из Git).
 Если Jupyter не установлен, можно добавить его отдельно, например
-\`python -m pip install jupyterlab\`.
+`python -m pip install jupyterlab`.
 
 Важные методологические решения:
 - RUONIA — основной ряд, его даты не фильтруются по календарю КБД;
