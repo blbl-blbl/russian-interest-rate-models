@@ -28,7 +28,10 @@ def test_notebook_run_all_on_synthetic_data(monkeypatch, tmp_path):
         "volume_bln_rub": [20.0, 40.0, float("nan"), 100.0, 75.0, 90.0],
     })
     key_rate = pd.DataFrame({
-        "date": dates - pd.Timedelta(days=1),
+        "date": pd.to_datetime([
+            "2014-06-02", "2014-12-15", "2020-03-31",
+            "2022-02-28", "2023-04-30", "2026-11-19",
+        ]),
         "key_rate_pct": [8.0, 17.0, 6.0, 20.0, 8.0, 16.0],
     })
     zcyc = pd.DataFrame(
