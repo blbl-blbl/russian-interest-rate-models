@@ -183,3 +183,51 @@ def test_parquet_replace_does_not_read_old_file(monkeypatch, tmp_path):
     })
     save_parquet(frame, "key_rate", tmp_path, replace=True)
     assert (tmp_path / "key_rate.parquet").read_bytes() == b"new"
+
+@pytest.mark.parametrize("missing_marker", ["—", "–", "-", ""])
+def test_ruonia_missing_volume_does_not_erase_valid_rate(missing_marker):
+    html = RUONIA_HTML.replace("1\u00a0008,21", missing_marker)
+    parsed = parse_table(html, "ruonia", date(2026, 11, 5), date(2026, 11, 6))
+    assert len(parsed) == 2
+    assert parsed.loc[0, "ruonia_pct"] == 14.5
+    assert pd.isna(parsed.loc[0, "volume_bln_rub"])
+    assert parsed.loc[1, "volume_bln_rub"] == 971.22
+
+
+def test_ruonia_unknown_volume_text_is_not_silently_accepted():
+    html = RUONIA_HTML.replace("1\u00a0008,21", "unknown")
+    with pytest.raises(CbrFormatError, match="Invalid numeric value"):
+        parse_table(html, "ruonia", date(2026, 11, 5), date(2026, 11, 6))
+
+
+def test_missing_interest_rate_is_still_an_error():
+    html = RUONIA_HTML.replace("14,50", "—")
+    with pytest.raises(CbrFormatError, match="Invalid numeric value"):
+        parse_table(html, "ruonia", date(2026, 11, 5), date(2026, 11, 6))
+
+
+def test_missing_ruonia_volume_roundtrips_in_real_parquet(tmp_path):
+    html = RUONIA_HTML.replace("1\u00a0008,21", "—")
+    parsed = parse_table(html, "ruonia", date(2026, 11, 5), date(2026, 11, 6))
+    output = save_parquet(parsed, "ruonia", tmp_path)
+    loaded = pd.read_parquet(output)
+    assert pd.isna(loaded.loc[0, "volume_bln_rub"])
+    assert loaded.loc[0, "ruonia_pct"] == 14.5
+    assert loaded["ruonia_pct"].dtype == "float64"
+    assert loaded["volume_bln_rub"].dtype == "float64"
+
+
+def test_existing_parquet_with_missing_ruonia_volume_can_be_updated(tmp_path):
+    initial_html = RUONIA_HTML.replace("1\u00a0008,21", "—")
+    original = parse_table(initial_html, "ruonia", date(2026, 11, 5), date(2026, 11, 6))
+    save_parquet(original, "ruonia", tmp_path)
+    next_day_html = html_table(
+        '<tr><th>Дата</th><th>Ставка</th><th>Объём</th></tr>',
+        '<tr><td>07.11.2026</td><td>14,30</td><td>—</td></tr>',
+    )
+    additional = parse_table(next_day_html, "ruonia", date(2026, 11, 7), date(2026, 11, 7))
+    saved = save_parquet(additional, "ruonia", tmp_path)
+    result = pd.read_parquet(saved)
+    assert len(result) == 3
+    assert result["ruonia_pct"].tolist() == [14.5, 14.4, 14.3]
+    assert result["volume_bln_rub"].isna().sum() == 2

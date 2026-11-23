@@ -72,9 +72,12 @@ def _year_chunks(start: date, end: date):
         yield max(start, date(year, 1, 1)), min(end, date(year, 12, 31))
 
 
-def _number(raw: str) -> float:
+def _number(raw: str, *, allow_missing: bool = False) -> float:
+    """Parse a CBR number; only explicitly nullable fields may contain a dash."""
     cleaned = raw.replace("\u00a0", "").replace("\u202f", "").replace(" ", "")
     cleaned = cleaned.replace("\u2212", "-").replace(",", ".")
+    if allow_missing and cleaned in {"", "-", "–", "—"}:
+        return float("nan")
     try:
         result = float(cleaned)
     except ValueError as error:
@@ -124,7 +127,7 @@ def parse_table(html: str, series: SeriesName, start: date, end: date) -> pd.Dat
                 f"{series} on {observed}: expected at least {expected} columns, got {len(cells)}"
             )
         if series == "ruonia":
-            records.append((observed, _number(cells[1]), _number(cells[2])))
+            records.append((observed, _number(cells[1]), _number(cells[2], allow_missing=True)))
         elif series == "key_rate":
             records.append((observed, _number(cells[1])))
         else:
@@ -150,7 +153,10 @@ def _normalize(frame: pd.DataFrame, series: SeriesName) -> pd.DataFrame:
     frame["date"] = pd.to_datetime(frame["date"], errors="raise")
     for name in COLUMNS[series][1:]:
         frame[name] = pd.to_numeric(frame[name], errors="raise").astype("float64")
-    if frame.isna().any().any():
+    # RUONIA turnover is auxiliary and may be unpublished (CBR uses an em dash).
+    # Interest rates, tenors and dates remain mandatory for model calibration.
+    required = [column for column in COLUMNS[series] if column != "volume_bln_rub"]
+    if frame[required].isna().any().any():
         raise ValueError(f"Missing data in {series}")
     if frame[KEYS[series]].duplicated().any():
         raise ValueError(f"Duplicate observations in {series}")
