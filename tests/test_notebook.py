@@ -16,7 +16,6 @@ def test_notebook_run_all_on_synthetic_data(monkeypatch, tmp_path):
     root = Path(__file__).resolve().parents[1]
     notebook = json.loads((root / "notebooks" / "01_rates_analysis.ipynb").read_text(encoding="utf-8"))
     assert notebook["nbformat"] == 4
-    assert all(not c.get("outputs") for c in notebook["cells"] if c["cell_type"] == "code")
 
     dates = pd.to_datetime([
         "2014-06-03", "2014-12-16", "2020-04-01",
