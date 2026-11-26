@@ -113,6 +113,41 @@ python -m russian_rates --series all --start 2014-01-01
 Пока эту исследовательскую работу можно продолжать в ветке `model/vasichek`;
 при переходе к большой самостоятельной реализации лучше открыть отдельную ветку.
 
+### Переиспользуемая модель Vasicek
+
+Математические функции находятся в файле
+[src/russian_rates/models/vasicek.py](src/russian_rates/models/vasicek.py).
+Они применимы к RUONIA и к спреду RUONIA − ключевая ставка.
+
+~~~python
+import pandas as pd
+from russian_rates.models import (
+    calibrate_profile, prepare_transitions, standardized_residuals,
+)
+
+df = pd.read_parquet("data/processed/ruonia.parquet")
+r_prev, r_next, dt = prepare_transitions(df, "ruonia_pct")
+fit = calibrate_profile(r_prev, r_next, dt)
+
+print(f"a = {fit['a']:.4f} 1/год")
+print(f"b = {fit['b'] * 100:.4f}%")
+print(f"sigma = {fit['sigma'] * 100:.4f} п.п./√год")
+z = standardized_residuals(
+    fit["a"], fit["b"], fit["sigma"], r_prev, r_next, dt
+)
+~~~
+
+В ноутбуке про спред достаточно передать объединённый датафрейм и
+колонку "spread_pp". Исходные значения в Parquet выражены в процентах;
+функция prepare_transitions делит их на 100 по умолчанию. Для ставок,
+уже переведённых в доли единицы, нужно указать values_in_percent=False.
+
+Интервалы между наблюдениями учитывают календарные дни (/365).
+Параметры оцениваются в исторической мере P; их нельзя напрямую
+использовать для безарбитражной оценки облигаций без перехода
+к риск-нейтральной мере Q. Номинальные профильные доверительные интервалы
+опираются на гауссовские предположения, проверяемые диагностикой остатков.
+
 ## Тестирование
 
 ```bash
